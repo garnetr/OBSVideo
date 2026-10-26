@@ -57,6 +57,12 @@ The installer reads that machine's model, display, Dock, and built-in camera, th
 
 Run the installer again on either Mac any time the Dock size or the screen mode changes. Quit OBS first. OBS overwrites the scene file on the way out.
 
+## OBS 26
+
+OBS 26.1.2, from January 2021, does not show this stage on macOS 13. On the 2018 MacBook Pro (MacBookPro15,1, macOS 13.1), Display Capture never created the Stage source. The preview stayed blank, Properties for Stage had nothing in it, and the camera circle could still appear. That build has no Screen Capture source, which is what the installer writes.
+
+Install OBS 33.0.0 first. It needs macOS 13 or newer. On an Intel Mac, use the Intel build. Check for Updates in 26.1.2 offers 33.0.0. Quit OBS, run the installer, and open OBS 33. The YouTube Lower Left scene loads there, stage included.
+
 ## If the picture is wrong
 
 A black preview means Screen Recording is off. Turn it on in System Settings → Privacy & Security → Screen Recording, then relaunch OBS.
