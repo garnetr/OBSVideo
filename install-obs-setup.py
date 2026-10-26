@@ -323,11 +323,12 @@ def build_collection(geom, display, camera, mask_path, ring_path):
             "type": "mask_color_filter.effect",
             "image_path": str(mask_path),
             "color": 16777215,
-            "opacity": 1.0,
+            # mask_filter v1. The slider is an integer 0–100. A float such
+            # as 1.0 is read as 1, which leaves the face almost invisible.
+            "opacity": 100,
             "stretch": True,
         },
         mixers=0,
-        version=2,
     )
     backdrop = source(
         "Backdrop",
