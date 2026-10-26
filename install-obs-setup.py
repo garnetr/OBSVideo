@@ -2,12 +2,14 @@
 """Install the YouTube Lower Left OBS scene on this Mac.
 
 The stage is a 960x540 point window in the lower left of the visible screen
-(above the Dock). OBS scales that region to a 1920x1080 frame, which doubles
-12-point terminal text on this 1x 1920x1200 framebuffer. A circular selfie
-cam sits in the upper right of the video.
+(above the Dock). OBS scales that region to a 1920x1080 frame. A circular
+selfie cam sits in the upper right of the video.
 
-Run it again on the other Mac. It rewrites the display, camera, and crop
-for whatever screen it finds. Quit OBS first.
+Run it again on the other Mac, or after the resolution or Dock changes.
+It rewrites the display, camera, and crop for whatever screen it finds.
+Quit OBS first. The crop uses the display mode's pixel size, which is
+what OBS captures. On a scaled Retina mode that is larger than the point
+size CGDisplayPixelsWide reports.
 """
 
 import json
@@ -29,7 +31,8 @@ COLLECTION = "YouTube Lower Left"
 PROFILE = "YouTube Lower Left"
 CANVAS_W = 1920
 CANVAS_H = 1080
-# Half of 1080p. On a 1x framebuffer this is a clean 2x enlarge.
+# 960x540 points. A 1x framebuffer captures 960x540 and scales 2x.
+# A 2x Retina framebuffer captures 1920x1080 and scales 1x.
 STAGE_W = 960
 STAGE_H = 540
 CAM_D = 300
@@ -121,10 +124,17 @@ for d in session.devices {
 
 
 def pixel_size():
+    # OBS sizes the display capture with CGDisplayModeGetPixelWidth/Height.
+    # CGDisplayPixelsWide returns points on a scaled Retina mode, so a crop
+    # built from it lands in the middle of the framebuffer.
     swift = r"""
 import CoreGraphics
 let id = CGMainDisplayID()
-print("\(CGDisplayPixelsWide(id)) \(CGDisplayPixelsHigh(id))")
+guard let mode = CGDisplayCopyDisplayMode(id) else {
+    fputs("no display mode\n", stderr)
+    exit(1)
+}
+print("\(mode.pixelWidth) \(mode.pixelHeight)")
 """
     parts = run(["swift", "-e", swift]).stdout.split()
     return int(parts[0]), int(parts[1])

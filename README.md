@@ -1,6 +1,6 @@
 # YouTube Lower Left
 
-A full-screen capture of this 1920×1200 display is too small to read on YouTube. This OBS setup records only a 960×540 window in the lower left and scales it to 1920×1080, so SF Mono Terminal Regular 12 is about twice as tall in the video. The selfie camera is a circle in the upper right.
+A full-screen capture is too small to read on YouTube. This OBS setup records only a 960×540 point window in the lower left and scales it to 1920×1080, so SF Mono Terminal Regular 12 is about twice as tall in the video. The selfie camera is a circle in the upper right.
 
 The scene collection and profile are already installed on this Mac. Both are named **YouTube Lower Left**.
 
@@ -12,12 +12,9 @@ The preview should show the lower-left of the screen, filling the frame, with a 
 
 ## Put a window on the stage
 
-The stage is the rectangle from the left edge, just above the Dock:
+The stage is a 960×540 point window from the left edge, just above the Dock. `place-stage.sh` reads the rectangle the installer saved for this screen. On a 1920×1200 display that is position 0, 600. On this 2056×1329 Retina display it is position 0, 707.
 
-- position: 0, 600
-- size: 960×540
-
-The top half of the screen and the entire right half stay off camera. Leave OBS, notes, and chat up there.
+The top of the screen and the entire right side stay off camera. Leave OBS, notes, and chat up there.
 
 From this folder:
 
@@ -56,7 +53,7 @@ Quit OBS on the M5 Pro, copy this folder over, and run:
 python3 install-obs-setup.py
 ```
 
-The installer reads that machine's display, Dock, and built-in camera, then writes the scene again. Use `place-stage.sh` the same way. Keep the screen in the same 1920×1200 mode. If the Dock height is different, the installer places the stage above it.
+The installer reads that machine's display, Dock, and built-in camera, then writes the scene again. Use `place-stage.sh` the same way. It uses the current screen mode, including a Retina framebuffer that is larger than the point size shown in System Settings. If the Dock height is different, the installer places the stage above it.
 
 Run the installer again on either Mac any time the Dock size or the screen mode changes. Quit OBS first. OBS overwrites the scene file on the way out.
 
