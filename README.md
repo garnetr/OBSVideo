@@ -34,6 +34,14 @@ The circle covers the upper right of the stage: about the last 20 characters of 
 
 For a browser, leave the page zoom at 100%. The 2× scale is what makes the page legible. Command-Plus makes it larger still, for you and for the viewer.
 
+## Circle opacity
+
+The face in the ring is the **Circle** filter on **Selfie Cam**. Right-click Selfie Cam in the Sources list and choose Filters. Click **Circle**. The Opacity slider runs from 0 to 100.
+
+100 fills the ring with you. A lower number lets the stage show through the circle, so the terminal or page stays readable in that corner while you are still visible. At 0 the circle is clear. The ring stays, the black terminal shows through it, and the camera light can still be on.
+
+A new install starts at 100. Leave the slider where you want it for the recording. The change applies immediately in the preview.
+
 ## Record
 
 The video is 1920×1080 at 60 fps. Start Recording writes a high-quality MP4 to `~/Movies`, using the Apple hardware encoder. Upload that file to YouTube.
@@ -55,5 +63,7 @@ Run the installer again on either Mac any time the Dock size or the screen mode 
 ## If the picture is wrong
 
 A black preview means Screen Recording is off. Turn it on in System Settings → Privacy & Security → Screen Recording, then relaunch OBS.
+
+An empty circle, with the ring still visible and the camera light on, means Circle opacity is at the bottom of the slider. Open it as described above and raise it.
 
 If the circle is an oval, or the face is sliced off, select Selfie Cam, open Properties, and set the preset to 1920×1080. The Crop to square filter should remove 420 pixels from the left and 420 from the right. Turn off Center Stage if the face zooms or drifts.
