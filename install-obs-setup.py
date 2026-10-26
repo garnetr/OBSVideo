@@ -12,6 +12,7 @@ what OBS captures. On a scaled Retina mode that is larger than the point
 size CGDisplayPixelsWide reports.
 """
 
+import argparse
 import json
 import math
 import struct
@@ -35,6 +36,15 @@ CANVAS_H = 1080
 # A 2x Retina framebuffer captures 1920x1080 and scales 1x.
 STAGE_W = 960
 STAGE_H = 540
+# Edge Light can turn itself on in a dark room on a Mac introduced in 2024
+# or later, once macOS is 26.2 or newer. 94 points is the band cleared on
+# the M5 Pro. Older models leave the stage on the left edge.
+EDGE_LIGHT_INSET = 94
+# Mac15 is the one generation that mixes years. These shipped in 2023.
+PRE_2024_MAC15 = {
+    "Mac15,3", "Mac15,4", "Mac15,5",
+    "Mac15,6", "Mac15,7", "Mac15,8", "Mac15,9", "Mac15,10", "Mac15,11",
+}
 CAM_D = 300
 CAM_MARGIN = 36
 CAM_PRESET_W = 1920
@@ -140,7 +150,95 @@ print("\(mode.pixelWidth) \(mode.pixelHeight)")
     return int(parts[0]), int(parts[1])
 
 
-def stage_geometry(points, visible, pixels):
+def version_tuple(text):
+    nums = []
+    for part in text.strip().split("."):
+        if not part.isdigit():
+            break
+        nums.append(int(part))
+    while len(nums) < 3:
+        nums.append(0)
+    return tuple(nums[:3])
+
+
+def automatic_edge_light(model):
+    """True when this model turns Edge Light on by itself in a dark room."""
+    head, sep, _minor = model.partition(",")
+    if not sep or not head.startswith("Mac"):
+        return False
+    generation = head[3:]
+    if not generation.isdigit():
+        return False
+    generation = int(generation)
+    if generation >= 16:
+        return True
+    if generation == 15:
+        return model not in PRE_2024_MAC15
+    return False
+
+
+def hardware():
+    model = run(["sysctl", "-n", "hw.model"]).stdout.strip()
+    machine = run(["sysctl", "-n", "hw.machine"]).stdout.strip()
+    version = version_tuple(run(["sw_vers", "-productVersion"]).stdout)
+    name = chip = ""
+    profile = run(["system_profiler", "SPHardwareDataType"]).stdout
+    for line in profile.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("Model Name:"):
+            name = stripped.split(":", 1)[1].strip()
+        elif stripped.startswith("Chip:"):
+            chip = stripped.split(":", 1)[1].strip()
+    return {
+        "model": model,
+        "machine": machine,
+        "version": version,
+        "name": name,
+        "chip": chip,
+    }
+
+
+def edge_light_inset(hw):
+    if hw["machine"] != "arm64":
+        return 0
+    if hw["version"] < (26, 2, 0):
+        return 0
+    if not automatic_edge_light(hw["model"]):
+        return 0
+    return EDGE_LIGHT_INSET
+
+
+def inset_points(text):
+    try:
+        value = int(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError("expected a whole number of points")
+    if value < 0:
+        raise argparse.ArgumentTypeError("must be 0 or greater")
+    return value
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Install the YouTube Lower Left OBS scene on this Mac."
+    )
+    parser.add_argument(
+        "--edge-inset",
+        nargs="?",
+        const=EDGE_LIGHT_INSET,
+        type=inset_points,
+        default=None,
+        metavar="POINTS",
+        help=(
+            "Force the Edge Light inset in points instead of deciding from "
+            f"the Mac model. With no number, uses {EDGE_LIGHT_INSET}. "
+            "Use 0 to keep the stage on the left edge."
+        ),
+    )
+    return parser.parse_args(argv)
+
+
+def stage_geometry(points, visible, pixels, edge_inset):
     point_w, point_h = points
     vis_x, vis_y, vis_w, vis_h = visible
     pixel_w, pixel_h = pixels
@@ -156,7 +254,9 @@ def stage_geometry(points, visible, pixels):
         else:
             stage_w = vis_w
             stage_h = vis_w * 9 / 16
-    left = vis_x
+    # Keep the stage clear of Edge Light when this Mac turns it on by itself.
+    inset = min(float(edge_inset), max(0.0, vis_w - stage_w))
+    left = vis_x + inset
     top = vis_top + vis_h - stage_h
     right = left + stage_w
     bottom = top + stage_h
@@ -178,6 +278,7 @@ def stage_geometry(points, visible, pixels):
         "pixels": [pixel_w, pixel_h],
         "visible_cocoa": [vis_x, vis_y, vis_w, vis_h],
         "bounds": [int(round(left)), int(round(top)), int(round(right)), int(round(bottom))],
+        "edge_inset": inset,
         "stage_points": [stage_w, stage_h],
         "crop": [crop_left, crop_top, crop_right, crop_bottom],
         "capture_pixels": [cap_w, cap_h],
@@ -631,14 +732,22 @@ def update_user_ini():
     USER_INI.write_text("\n".join(out) + "\n")
 
 
-def main():
+def main(argv=None):
+    args = parse_args(argv)
     if obs_is_running():
         raise SystemExit("Quit OBS first. It overwrites the scene file when it exits.")
     print("Reading this Mac's display and camera...")
+    hw = hardware()
+    if args.edge_inset is None:
+        inset = edge_light_inset(hw)
+        forced = False
+    else:
+        inset = args.edge_inset
+        forced = True
     points, visible, camera = screen_and_camera()
     pixels = pixel_size()
     display = display_uuid()
-    geom = stage_geometry(points, visible, pixels)
+    geom = stage_geometry(points, visible, pixels, inset)
     SUPPORT.mkdir(parents=True, exist_ok=True)
     mask_path, ring_path = make_masks(SUPPORT)
     project_assets = Path(__file__).resolve().parent / "assets"
@@ -651,6 +760,9 @@ def main():
     stage_path = SUPPORT / "stage.json"
     stage_doc = {
         "bounds": geom["bounds"],
+        "model": hw["model"],
+        "edge_light_inset": int(geom["edge_inset"]),
+        "edge_light_forced": forced,
         "stage_points": geom["stage_points"],
         "capture_pixels": geom["capture_pixels"],
         "scale": geom["scale"],
@@ -672,6 +784,14 @@ def main():
     print()
     print(f"Scene collection: {scene_path}")
     print(f"Profile:          {PROFILES / PROFILE}")
+    label = ", ".join(part for part in (hw["name"], hw["chip"]) if part)
+    version = ".".join(str(part) for part in hw["version"])
+    print(f"Mac:              {label} ({hw['model']}), macOS {version}")
+    forced_note = " (forced)" if forced else ""
+    if geom["edge_inset"]:
+        print(f"Edge Light:       inset {geom['edge_inset']:.0f} points{forced_note}")
+    else:
+        print(f"Edge Light:       no inset{forced_note}")
     print(f"Screen:           {geom['points'][0]:.0f}x{geom['points'][1]:.0f} points, {pixels[0]}x{pixels[1]} pixels")
     print(f"Stage window:     left {left}, top {top}, {right - left:.0f}x{bottom - top:.0f}")
     print(f"Capture:          {cap_w}x{cap_h} pixels, scaled {sx:.3f}x{sy:.3f} to {CANVAS_W}x{CANVAS_H}")

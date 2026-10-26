@@ -12,7 +12,7 @@ The preview should show the lower-left of the screen, filling the frame, with a 
 
 ## Put a window on the stage
 
-The stage is a 960×540 point window from the left edge, just above the Dock. `place-stage.sh` reads the rectangle the installer saved for this screen. On a 1920×1200 display that is position 0, 600. On this 2056×1329 Retina display it is position 0, 707.
+The stage is a 960×540 point window just above the Dock. `place-stage.sh` reads the rectangle the installer saved for this screen. On a Mac introduced in 2024 or later, running macOS 26.2 or later, Edge Light can turn on by itself in a dark room, so the installer sets the stage 94 points in from the left. An older Mac keeps the stage on the left edge. On this M5 Pro that is position 94, 707.
 
 The top of the screen and the entire right side stay off camera. Leave OBS, notes, and chat up there.
 
@@ -53,7 +53,7 @@ Quit OBS on the M5 Pro, copy this folder over, and run:
 python3 install-obs-setup.py
 ```
 
-The installer reads that machine's display, Dock, and built-in camera, then writes the scene again. Use `place-stage.sh` the same way. It uses the current screen mode, including a Retina framebuffer that is larger than the point size shown in System Settings. If the Dock height is different, the installer places the stage above it.
+The installer reads that machine's model, display, Dock, and built-in camera, then writes the scene again. Use `place-stage.sh` the same way. It uses the current screen mode, including a Retina framebuffer that is larger than the point size shown in System Settings. An M5 Air gets the same Edge Light inset as this M5 Pro. A Mac from before 2024 does not. Pass `--edge-inset` to force the 94-point inset, `--edge-inset 0` to leave the stage on the left edge, or `--edge-inset 120` to set another width. If the Dock height is different, the installer places the stage above it.
 
 Run the installer again on either Mac any time the Dock size or the screen mode changes. Quit OBS first. OBS overwrites the scene file on the way out.
 
