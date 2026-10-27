@@ -269,6 +269,9 @@ def source(name, source_id, settings, filters=None, mixers=255, muted=False, vol
     return obj
 
 
+FACTORIO_BUNDLE = "com.factorio"
+
+
 def scene_item(name, source_uuid, item_id, pos, scale, crop, scale_filter):
     x, y = pos
     sx, sy = scale
@@ -370,32 +373,61 @@ def build_collection(geom, display, camera, mask_path, ring_path):
     )
     ring = source("Cam Ring", "image_source", {"file": str(ring_path), "unload": False}, mixers=0)
 
-    items = [
-        scene_item("Backdrop", backdrop["uuid"], 1, (0, 0), (1, 1), (0, 0, 0, 0), "disable"),
-        scene_item(
-            "Stage",
-            stage["uuid"],
-            2,
-            (0, 0),
-            geom["scale"],
-            geom["crop"],
-            "lanczos",
-        ),
-        scene_item("Selfie Cam", selfie["uuid"], 3, (cam_x, cam_y), (cam_scale, cam_scale), (0, 0, 0, 0), "area"),
-        scene_item("Cam Ring", ring["uuid"], 4, (cam_x, cam_y), (cam_scale, cam_scale), (0, 0, 0, 0), "disable"),
-    ]
-    hotkeys = {"OBSBasic.SelectScene": []}
-    for item_id in range(1, 5):
-        hotkeys[f"libobs.show_scene_item.{item_id}"] = []
-        hotkeys[f"libobs.hide_scene_item.{item_id}"] = []
-    scene = source(
-        "Lower Left",
-        "scene",
-        {"id_counter": 5, "custom_size": False, "items": items},
-        mixers=0,
-        hotkeys=hotkeys,
+    def stack(capture_name, capture_uuid):
+        return [
+            scene_item("Backdrop", backdrop["uuid"], 1, (0, 0), (1, 1), (0, 0, 0, 0), "disable"),
+            scene_item(
+                capture_name,
+                capture_uuid,
+                2,
+                (0, 0),
+                geom["scale"],
+                geom["crop"],
+                "lanczos",
+            ),
+            scene_item(
+                "Selfie Cam", selfie["uuid"], 3, (cam_x, cam_y), (cam_scale, cam_scale), (0, 0, 0, 0), "area"
+            ),
+            scene_item(
+                "Cam Ring", ring["uuid"], 4, (cam_x, cam_y), (cam_scale, cam_scale), (0, 0, 0, 0), "disable"
+            ),
+        ]
+
+    def make_scene(name, items):
+        hotkeys = {"OBSBasic.SelectScene": []}
+        for item in items:
+            hotkeys[f"libobs.show_scene_item.{item['id']}"] = []
+            hotkeys[f"libobs.hide_scene_item.{item['id']}"] = []
+        built = source(
+            name,
+            "scene",
+            {"id_counter": max(item["id"] for item in items) + 1, "custom_size": False, "items": items},
+            mixers=0,
+            hotkeys=hotkeys,
+        )
+        built["canvas_uuid"] = CANVAS_UUID
+        return built
+
+    # Application capture is the whole display with only this app drawn.
+    # The same stage crop then fills the frame with the game window, and
+    # leaves every other window out. The bundle id survives a relaunch.
+    factorio = source(
+        "Factorio Window",
+        "screen_capture",
+        {
+            "type": 2,
+            "display_uuid": display,
+            "application": FACTORIO_BUNDLE,
+            "window": 0,
+            "show_cursor": True,
+            "hide_obs": False,
+            "show_empty_names": False,
+            "show_hidden_windows": False,
+        },
+        volume=1.0,
     )
-    scene["canvas_uuid"] = CANVAS_UUID
+    lower_left = make_scene("Lower Left", stack("Stage", stage["uuid"]))
+    factorio_scene = make_scene("Factorio", stack("Factorio Window", factorio["uuid"]))
 
     mic_filters = [
         source(
@@ -424,9 +456,9 @@ def build_collection(geom, display, camera, mask_path, ring_path):
         "AuxAudioDevice1": mic,
         "current_scene": "Lower Left",
         "current_program_scene": "Lower Left",
-        "scene_order": [{"name": "Lower Left"}],
+        "scene_order": [{"name": "Lower Left"}, {"name": "Factorio"}],
         "name": COLLECTION,
-        "sources": [scene, backdrop, stage, selfie, ring],
+        "sources": [lower_left, factorio_scene, backdrop, stage, factorio, selfie, ring],
         "groups": [],
         "quick_transitions": [
             {"name": "Cut", "duration": 300, "hotkeys": [], "id": 1, "fade_to_black": False},
@@ -671,9 +703,11 @@ def main():
         print("Camera:           none found — pick the built-in camera on Selfie Cam")
     print()
     print("Open OBS. Allow Screen Recording and Camera if macOS asks, then quit OBS and open it once more.")
+    print("Scenes:           Lower Left, Factorio")
     print("Before you record, put the window on the stage:")
     print("  ./place-stage.sh terminal")
     print("  ./place-stage.sh chrome")
+    print("  ./place-stage.sh factorio")
 
 
 if __name__ == "__main__":

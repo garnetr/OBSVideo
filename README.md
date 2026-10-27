@@ -25,8 +25,21 @@ From this folder:
 ./place-stage.sh terminal
 ./place-stage.sh chrome
 ./place-stage.sh safari
+./place-stage.sh factorio
 ./place-stage.sh front
 ```
+
+`factorio` sizes the running Factorio window to the stage and moves it there. Factorio has to already be open, in a window. Leave fullscreen off. If the Lower Left scene still shows the window behind the game, restart the Stage capture as described at the bottom.
+
+## Factorio scene
+
+The same collection has a second scene, **Factorio**. It captures only the Factorio application, cropped to that same stage, and keeps the selfie circle in the upper right. Windows from other apps stay out of the video even when they cover the game.
+
+Have Factorio running, run `./place-stage.sh factorio`, then click **Factorio** in the Scenes list. The game audio comes from the Factorio Window source. Mic/Aux is unchanged. Use headphones so the microphone does not record the speakers.
+
+If that preview is empty, the capture started before the game was open. Select Factorio Window, open Properties, and click **Restart capture**.
+
+This scene is written the next time you run the installer. Quit OBS first. OBS overwrites the scene file on the way out.
 
 `front` moves whichever app is in front. At SF Mono Terminal Regular 12, a Terminal window filled to the stage is **131 columns by 32 rows**. The Clear Dark profile (120×30) fits inside that. A 49-line window is taller than the stage, so those extra lines are not in the video. Thirty-two lines at this size is what stays readable after YouTube compresses the picture.
 

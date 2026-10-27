@@ -1,6 +1,5 @@
 #!/bin/bash
-# Move the front window of Terminal, a browser, or the frontmost app
-# onto the lower-left stage that OBS is cropped to.
+# Move a window onto the lower-left stage that OBS is cropped to.
 set -euo pipefail
 
 STAGE="${HOME}/Library/Application Support/obs-studio/youtube-lower-left/stage.json"
@@ -16,33 +15,69 @@ print(*doc["bounds"])
 PY
 )
 
-TARGET="${1:-terminal}"
-case "$TARGET" in
-  terminal|Terminal) APP="Terminal" ;;
-  chrome|Chrome|google-chrome) APP="Google Chrome" ;;
-  safari|Safari) APP="Safari" ;;
-  arc|Arc) APP="Arc" ;;
-  firefox|Firefox) APP="Firefox" ;;
-  front|.) APP="" ;;
-  *) APP="$TARGET" ;;
-esac
+WIDTH=$((RIGHT - LEFT))
+HEIGHT=$((BOTTOM - TOP))
 
-if [[ -z "$APP" ]]; then
-  APP=$(osascript -e 'tell application "System Events" to get name of first application process whose frontmost is true')
-fi
-
-if [[ "$APP" == "OBS" ]]; then
-  echo "OBS is in front. Focus Terminal or the browser, or pass its name." >&2
-  exit 1
-fi
-
-osascript << EOF
-tell application "$APP"
+place_scriptable() {
+  local app="$1"
+  osascript << EOF
+tell application "$app"
   activate
   if (count of windows) is 0 then error "No window"
   set bounds of front window to {$LEFT, $TOP, $RIGHT, $BOTTOM}
 end tell
 EOF
+  echo "Placed ${app} at ${LEFT},${TOP} size ${WIDTH}x${HEIGHT}."
+}
 
-echo "Placed ${APP} at ${LEFT},${TOP} size $((RIGHT - LEFT))x$((BOTTOM - TOP))."
+# Factorio has no window-bounds command. Its process window does take a size
+# and a position. Size first, then position, so the resize does not shove it
+# off the stage.
+place_factorio() {
+  osascript << EOF
+tell application "System Events"
+  if not (exists process "factorio") then error "Factorio is not running"
+  tell process "factorio"
+    set frontmost to true
+    if (count of windows) is 0 then error "No window"
+    set size of window 1 to {$WIDTH, $HEIGHT}
+    delay 0.3
+    set position of window 1 to {$LEFT, $TOP}
+    set frontmost to true
+  end tell
+end tell
+EOF
+  echo "Placed Factorio at ${LEFT},${TOP} size ${WIDTH}x${HEIGHT}."
+}
+
+TARGET="${1:-terminal}"
+case "$TARGET" in
+  factorio|Factorio) place_factorio ;;
+  terminal|Terminal) place_scriptable "Terminal" ;;
+  chrome|Chrome|google-chrome) place_scriptable "Google Chrome" ;;
+  safari|Safari) place_scriptable "Safari" ;;
+  arc|Arc) place_scriptable "Arc" ;;
+  firefox|Firefox) place_scriptable "Firefox" ;;
+  front|.)
+    APP=$(osascript -e 'tell application "System Events" to get name of first application process whose frontmost is true')
+    if [[ "$APP" == "OBS" || "$APP" == "factorio" ]]; then
+      if [[ "$APP" == "factorio" ]]; then
+        place_factorio
+      else
+        echo "OBS is in front. Focus Terminal, the browser, or Factorio, or pass its name." >&2
+        exit 1
+      fi
+    else
+      place_scriptable "$APP"
+    fi
+    ;;
+  *)
+    if [[ "$TARGET" == "OBS" ]]; then
+      echo "OBS is in front. Focus Terminal, the browser, or Factorio, or pass its name." >&2
+      exit 1
+    fi
+    place_scriptable "$TARGET"
+    ;;
+esac
+
 echo "That rectangle is the whole YouTube frame. The circle covers its upper right."
