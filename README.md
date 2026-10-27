@@ -66,4 +66,6 @@ A black preview means Screen Recording is off. Turn it on in System Settings →
 
 An empty circle, with the ring still visible and the camera light on, means Circle opacity is at the bottom of the slider. Open it as described above and raise it.
 
+A game in the stage that you can see on the screen, while OBS still shows whatever is behind it, means the capture started before that game. Select Stage, open Properties, and click **Restart capture**. macOS builds the list of windows when the capture starts, and a game opened afterward is left out until you restart it. Terminal and a browser that were already open do not need this.
+
 If the circle is an oval, or the face is sliced off, select Selfie Cam, open Properties, and set the preset to 1920×1080. The Crop to square filter should remove 420 pixels from the left and 420 from the right. Turn off Center Stage if the face zooms or drifts.
